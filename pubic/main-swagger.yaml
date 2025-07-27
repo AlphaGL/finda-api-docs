@@ -1,0 +1,3212 @@
+openapi: 3.0.3
+info:
+  title: Finda Main API
+  description: |
+    Main business logic API for Finda platform. This API handles products, services,
+    locations, categories, ratings, payments, and all core marketplace functionality.
+    
+    Features include location hierarchy validation, advanced search, payment processing
+    with Paystack, bulk operations, analytics, and comprehensive filtering system.
+  version: 1.0.0
+  contact:
+    name: Finda API Support
+    email: ichukwugozirim@gmail.com
+  license:
+    name: MIT License
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://finda-backend.onrender.com
+    description: Production server
+  - url: http://localhost:8000
+    description: Local development
+
+tags:
+  - name: Location Management
+    description: Countries, states, cities management with hierarchy validation
+  - name: Categories
+    description: Product and service category management
+  - name: Products
+    description: Product listings management
+  - name: Services
+    description: Service listings management
+  - name: Ratings & Reviews
+    description: Product and service rating system
+  - name: Search & Discovery
+    description: Search, filtering, and homepage functionality
+  - name: Payments
+    description: Paystack payment integration for listings and promotions
+  - name: Analytics
+    description: User dashboard, trending searches, popular categories
+  - name: Admin & Moderation
+    description: Administrative functions and content moderation
+  - name: Bulk Operations
+    description: Bulk actions on listings
+  - name: System
+    description: Health checks and system information
+
+paths:
+  # ===========================
+  #  LOCATION MANAGEMENT
+  # ===========================
+  /api/countries/:
+    get:
+      tags:
+        - Location Management
+      summary: List all active countries
+      description: |
+        Get list of all active countries with optional filtering and search.
+        Results are cached for performance.
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search by country name or code
+        - name: ordering
+          in: query
+          schema:
+            type: string
+            enum: [name, sort_order, -name, -sort_order]
+          description: Order results by field
+      responses:
+        "200":
+          description: List of countries
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Country'
+
+  /api/countries/popular/:
+    get:
+      tags:
+        - Location Management
+      summary: Get popular countries
+      description: Countries with active product/service listings
+      responses:
+        "200":
+          description: Popular countries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Country'
+
+  /api/states/:
+    get:
+      tags:
+        - Location Management
+      summary: List states
+      description: Get states with optional country filtering
+      parameters:
+        - name: country
+          in: query
+          schema:
+            type: integer
+          description: Filter by country ID
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search by state name or code
+      responses:
+        "200":
+          description: List of states
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/State'
+
+  /api/cities/:
+    get:
+      tags:
+        - Location Management
+      summary: List cities
+      description: Get cities with optional state/country filtering
+      parameters:
+        - name: state
+          in: query
+          schema:
+            type: integer
+          description: Filter by state ID
+        - name: country
+          in: query
+          schema:
+            type: integer
+          description: Filter by country ID
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search by city name
+      responses:
+        "200":
+          description: List of cities
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/City'
+
+  /api/cities/major_cities/:
+    get:
+      tags:
+        - Location Management
+      summary: Get major cities
+      description: Get major cities globally or by country
+      parameters:
+        - name: country
+          in: query
+          schema:
+            type: integer
+          description: Filter by country ID
+      responses:
+        "200":
+          description: Major cities
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/City'
+
+  /api/location/hierarchy/:
+    get:
+      tags:
+        - Location Management
+      summary: Get location hierarchy
+      description: Get complete location hierarchy information
+      parameters:
+        - name: city_id
+          in: query
+          schema:
+            type: integer
+          description: City ID to get hierarchy for
+        - name: state_id
+          in: query
+          schema:
+            type: integer
+          description: State ID to get hierarchy for
+        - name: country_id
+          in: query
+          schema:
+            type: integer
+          description: Country ID to get hierarchy for
+      responses:
+        "200":
+          description: Location hierarchy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LocationHierarchy'
+        "404":
+          description: No valid location found
+
+  # ===========================
+  #  CATEGORIES
+  # ===========================
+  /api/categories/:
+    get:
+      tags:
+        - Categories
+      summary: List categories
+      description: Get all active categories with search and filtering
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search categories by name or description
+        - name: category_type
+          in: query
+          schema:
+            type: string
+            enum: [both, product, service]
+          description: Filter by category type
+      responses:
+        "200":
+          description: List of categories
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Category'
+
+  /api/categories/root_categories/:
+    get:
+      tags:
+        - Categories
+      summary: Get root categories
+      description: Get categories with no parent (top-level categories)
+      responses:
+        "200":
+          description: Root categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Category'
+
+  /api/categories/{id}/subcategories/:
+    get:
+      tags:
+        - Categories
+      summary: Get subcategories
+      description: Get subcategories for a specific category
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Category ID
+      responses:
+        "200":
+          description: Subcategories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Category'
+
+  # ===========================
+  #  PRODUCTS
+  # ===========================
+  /api/products/:
+    get:
+      tags:
+        - Products
+      summary: List products
+      description: |
+        Get published products with advanced filtering options.
+        Supports location hierarchy, price range, rating filters.
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search in product name, description, brand, tags
+        - name: category
+          in: query
+          schema:
+            type: integer
+          description: Filter by category ID
+        - name: country
+          in: query
+          schema:
+            type: integer
+          description: Filter by country ID
+        - name: state
+          in: query
+          schema:
+            type: integer
+          description: Filter by state ID
+        - name: city
+          in: query
+          schema:
+            type: integer
+          description: Filter by city ID
+        - name: min_price
+          in: query
+          schema:
+            type: number
+          description: Minimum price filter
+        - name: max_price
+          in: query
+          schema:
+            type: number
+          description: Maximum price filter
+        - name: product_condition
+          in: query
+          schema:
+            type: string
+            enum: [new, used, refurbished]
+          description: Filter by product condition
+        - name: is_promoted
+          in: query
+          schema:
+            type: boolean
+          description: Filter promoted products
+        - name: my_products
+          in: query
+          schema:
+            type: string
+            enum: ["true"]
+          description: Get current user's products (requires authentication)
+        - name: ordering
+          in: query
+          schema:
+            type: string
+            enum: [product_price, -product_price, created_at, -created_at, views_count, -views_count]
+          description: Order results
+      responses:
+        "200":
+          description: List of products
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Product'
+
+    post:
+      tags:
+        - Products
+      summary: Create new product
+      description: |
+        Create a new product listing. Requires authentication and validates
+        location hierarchy before saving.
+      security:
+        - TokenAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ProductCreateRequest'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductCreateRequest'
+      responses:
+        "201":
+          description: Product created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        "401":
+          description: Authentication required
+
+  /api/products/{id}/:
+    get:
+      tags:
+        - Products
+      summary: Get product details
+      description: |
+        Get detailed product information. Increments view count automatically.
+        Includes ratings, location details, and user information.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Product ID
+      responses:
+        "200":
+          description: Product details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        "404":
+          description: Product not found
+
+    put:
+      tags:
+        - Products
+      summary: Update product (full update)
+      description: Update all product fields
+      security:
+        - TokenAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ProductUpdateRequest'
+      responses:
+        "200":
+          description: Product updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        "400":
+          description: Validation error
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission denied
+        "404":
+          description: Product not found
+
+    patch:
+      tags:
+        - Products
+      summary: Partially update product
+      description: Update specific product fields
+      security:
+        - TokenAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ProductUpdateRequest'
+      responses:
+        "200":
+          description: Product updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+
+    delete:
+      tags:
+        - Products
+      summary: Delete product
+      description: Delete a product listing (owner only)
+      security:
+        - TokenAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Product deleted successfully
+        "401":
+          description: Authentication required
+        "403":
+          description: Permission denied
+        "404":
+          description: Product not found
+
+  /api/products/{id}/toggle_favorite/:
+    post:
+      tags:
+        - Products
+      summary: Toggle product favorite
+      description: Add or remove product from user's favorites
+      security:
+        - TokenAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Favorite status toggled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  favorited:
+                    type: boolean
+
+  /api/products/favorites/:
+    get:
+      tags:
+        - Products
+      summary: Get user's favorite products
+      description: Get current user's favorite products
+      security:
+        - TokenAuth: []
+      responses:
+        "200":
+          description: User's favorite products
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Product'
+
+  /api/products/nearby/:
+    get:
+      tags:
+        - Products
+      summary: Get nearby products
+      description: Get products near a specific location
+      parameters:
+        - name: city_id
+          in: query
+          required: true
+          schema:
+            type: integer
+          description: City ID to find nearby products
+      responses:
+        "200":
+          description: Nearby products
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Product'
+        "400":
+          description: city_id parameter required
+
+  # ===========================
+  #  SERVICES
+  # ===========================
+  /api/services/:
+    get:
+      tags:
+        - Services
+      summary: List services
+      description: |
+        Get published services with advanced filtering options.
+        Similar to products but with service-specific filters.
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search in service name, description, provider name, expertise
+        - name: category
+          in: query
+          schema:
+            type: integer
+          description: Filter by category ID
+        - name: country
+          in: query
+          schema:
+            type: integer
+          description: Filter by country ID
+        - name: state
+          in: query
+          schema:
+            type: integer
+          description: Filter by state ID
+        - name: city
+          in: query
+          schema:
+            type: integer
+          description: Filter by city ID
+        - name: min_price
+          in: query
+          schema:
+            type: number
+          description: Minimum starting price
+        - name: max_price
+          in: query
+          schema:
+            type: number
+          description: Maximum starting price
+        - name: serves_remote
+          in: query
+          schema:
+            type: boolean
+          description: Filter services that serve remote clients
+        - name: is_verified
+          in: query
+          schema:
+            type: boolean
+          description: Filter verified service providers
+        - name: my_services
+          in: query
+          schema:
+            type: string
+            enum: ["true"]
+          description: Get current user's services
+      responses:
+        "200":
+          description: List of services
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Service'
+
+    post:
+      tags:
+        - Services
+      summary: Create new service
+      description: Create a new service listing with location validation
+      security:
+        - TokenAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ServiceCreateRequest'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ServiceCreateRequest'
+      responses:
+        "201":
+          description: Service created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Service'
+        "400":
+          description: Validation error
+
+  /api/services/{id}/:
+    get:
+      tags:
+        - Services
+      summary: Get service details
+      description: Get detailed service information and increment view count
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Service details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Service'
+
+    put:
+      tags:
+        - Services
+      summary: Update service (full)
+      security:
+        - TokenAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ServiceUpdateRequest'
+      responses:
+        "200":
+          description: Service updated successfully
+
+    patch:
+      tags:
+        - Services
+      summary: Partially update service
+      security:
+        - TokenAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Service updated successfully
+
+    delete:
+      tags:
+        - Services
+      summary: Delete service
+      security:
+        - TokenAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Service deleted successfully
+
+  /api/services/{id}/contact/:
+    post:
+      tags:
+        - Services
+      summary: Record service contact
+      description: Increment contact count when someone contacts service provider
+      security:
+        - TokenAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Contact recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+                    example: "Contact recorded"
+
+  # ===========================
+  #  RATINGS & REVIEWS
+  # ===========================
+  /api/products/{product_id}/ratings/:
+    get:
+      tags:
+        - Ratings & Reviews
+      summary: List product ratings
+      description: Get all ratings for a specific product
+      parameters:
+        - name: product_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Product ratings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProductRating'
+
+    post:
+      tags:
+        - Ratings & Reviews
+      summary: Create/update product rating
+      description: Create new rating or update existing rating for product
+      security:
+        - TokenAuth: []
+      parameters:
+        - name: product_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductRatingRequest'
+      responses:
+        "201":
+          description: Rating created/updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductRating'
+
+  /api/products/{product_id}/ratings/{id}/:
+    get:
+      tags:
+        - Ratings & Reviews
+      summary: Get specific product rating
+      parameters:
+        - name: product_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Product rating details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductRating'
+
+    put:
+      tags:
+        - Ratings & Reviews
+      summary: Update product rating
+      security:
+        - TokenAuth: []
+      parameters:
+        - name: product_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductRatingRequest'
+      responses:
+        "200":
+          description: Rating updated successfully
+
+    delete:
+      tags:
+        - Ratings & Reviews
+      summary: Delete product rating
+      security:
+        - TokenAuth: []
+      parameters:
+        - name: product_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Rating deleted successfully
+
+  /api/services/{service_id}/ratings/:
+    get:
+      tags:
+        - Ratings & Reviews
+      summary: List service ratings
+      description: Get all ratings for a specific service
+      parameters:
+        - name: service_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Service ratings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ServiceRating'
+
+    post:
+      tags:
+        - Ratings & Reviews
+      summary: Create/update service rating
+      security:
+        - TokenAuth: []
+      parameters:
+        - name: service_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ServiceRatingRequest'
+      responses:
+        "201":
+          description: Rating created/updated successfully
+
+  # ===========================
+  #  SEARCH & DISCOVERY
+  # ===========================
+  /api/home/:
+    get:
+      tags:
+        - Search & Discovery
+      summary: Homepage data
+      description: |
+        Get homepage data with promoted content, regular listings, and filter options.
+        Supports all search and filtering parameters.
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search query
+        - name: category
+          in: query
+          schema:
+            type: integer
+          description: Category filter
+        - name: country
+          in: query
+          schema:
+            type: integer
+          description: Country filter
+        - name: state
+          in: query
+          schema:
+            type: integer
+          description: State filter
+        - name: city
+          in: query
+          schema:
+            type: integer
+          description: City filter
+        - name: min_rating
+          in: query
+          schema:
+            type: number
+            minimum: 1.0
+            maximum: 5.0
+          description: Minimum rating filter
+        - name: max_price
+          in: query
+          schema:
+            type: number
+          description: Maximum price filter
+      responses:
+        "200":
+          description: Homepage data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HomePageResponse'
+        "400":
+          description: Invalid location hierarchy
+
+  /api/search/:
+    get:
+      tags:
+        - Search & Discovery
+      summary: Advanced search
+      description: |
+        Comprehensive search across products and services with advanced filtering.
+        Logs search queries for analytics.
+      parameters:
+        - name: q
+          in: query
+          schema:
+            type: string
+            maxLength: 200
+          description: Search query
+        - name: category
+          in: query
+          schema:
+            type: string
+          description: Category name filter
+        - name: location
+          in: query
+          schema:
+            type: string
+          description: Location name filter
+        - name: min_price
+          in: query
+          schema:
+            type: number
+            minimum: 0
+          description: Minimum price
+        - name: max_price
+          in: query
+          schema:
+            type: number
+            minimum: 0
+          description: Maximum price
+        - name: min_rating
+          in: query
+          schema:
+            type: number
+            minimum: 1.0
+            maximum: 5.0
+          description: Minimum rating
+        - name: item_type
+          in: query
+          schema:
+            type: string
+            enum: [all, products, services]
+            default: all
+          description: Type of items to search
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResponse'
+        "400":
+          description: Invalid search parameters
+
+  /api/stats/:
+    get:
+      tags:
+        - Search & Discovery
+      summary: User statistics
+      description: Get current user's listing statistics and performance metrics
+      security:
+        - TokenAuth: []
+      responses:
+        "200":
+          description: User statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserStats'
+
+  # ===========================
+  #  PAYMENTS
+  # ===========================
+  /api/payments/initiate/:
+    post:
+      tags:
+        - Payments
+      summary: Initialize payment
+      description: |
+        Initialize Paystack payment for product or service listing.
+        Base listing fee applies with optional promotion fees.
+      security:
+        - TokenAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentInitiateRequest'
+      responses:
+        "200":
+          description: Payment initialized successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentInitiateResponse'
+        "400":
+          description: Validation error or item already paid
+        "404":
+          description: Item not found
+
+  /api/payments/verify/:
+    post:
+      tags:
+        - Payments
+      summary: Verify payment (callback)
+      description: |
+        Paystack payment callback endpoint. Verifies payment and updates item status.
+        Can be called as GET or POST for different callback scenarios.
+      parameters:
+        - name: reference
+          in: query
+          schema:
+            type: string
+          description: Paystack payment reference
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reference:
+                  type: string
+                  description: Paystack payment reference
+      responses:
+        "200":
+          description: Payment verified and item updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentVerifyResponse'
+        "400":
+          description: Payment verification failed
+        "403":
+          description: User mismatch security error
+
+  /api/payments/status/:
+    get:
+      tags:
+        - Payments
+      summary: Check payment status
+      description: Check payment status of a specific product or service
+      security:
+        - TokenAuth: []
+      parameters:
+        - name: product_id
+          in: query
+          schema:
+            type: integer
+          description: Product ID to check
+        - name: service_id
+          in: query
+          schema:
+            type: integer
+          description: Service ID to check
+      responses:
+        "200":
+          description: Payment status information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentStatusResponse'
+        "400":
+          description: Invalid request parameters
+        "404":
+          description: Item not found
+
+  /api/payments/history/:
+    get:
+      tags:
+        - Payments
+      summary: Get payment history
+      description: Get user's complete payment history with summary
+      security:
+        - TokenAuth: []
+      responses:
+        "200":
+          description: Payment history
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentHistoryResponse'
+
+  /api/payments/promote/:
+    post:
+      tags:
+        - Payments
+      summary: Promote item
+      description: |
+        Initialize promotion payment for existing published item.
+        Calculates fees based on promotion duration.
+      security:
+        - TokenAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PromotionPaymentRequest'
+      responses:
+        "200":
+          description: Promotion payment initialized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PromotionPaymentResponse'
+        "400":
+          description: Item cannot be promoted or validation error
+
+  # ===========================
+  #  ANALYTICS
+  # ===========================
+  /api/analytics/trending-searches/:
+    get:
+      tags:
+        - Analytics
+      summary: Get trending searches
+      description: Get trending search terms from the last 7 days
+      responses:
+        "200":
+          description: Trending searches
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  trending_searches:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TrendingSearch'
+                  period:
+                    type: string
+                    example: "7 days"
+
+  /api/analytics/popular-categories/:
+    get:
+      tags:
+        - Analytics
+      summary: Get popular categories
+      description: Get popular categories with listing counts, optionally filtered by location
+      parameters:
+        - name: country_id
+          in: query
+          schema:
+            type: integer
+          description: Filter by country ID
+        - name: state_id
+          in: query
+          schema:
+            type: integer
+          description: Filter by state ID
+        - name: city_id
+          in: query
+          schema:
+            type: integer
+          description: Filter by city ID
+      responses:
+        "200":
+          description: Popular categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PopularCategory'
+
+  /api/dashboard/:
+    get:
+      tags:
+        - Analytics
+      summary: User dashboard
+      description: |
+        Get comprehensive user dashboard with listings overview, analytics,
+        recent activity, performance metrics, and favorites.
+      security:
+        - TokenAuth: []
+      responses:
+        "200":
+          description: User dashboard data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDashboard'
+
+  # ===========================
+  #  ADMIN & MODERATION
+  # ===========================
+  /api/admin/stats/:
+    get:
+      tags:
+        - Admin & Moderation
+      summary: Admin statistics
+      description: Comprehensive admin statistics and insights (staff only)
+      security:
+        - TokenAuth: []
+      responses:
+        "200":
+          description: Admin statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminStats'
+        "403":
+          description: Admin access required
+
+  /api/admin/moderation/:
+    get:
+      tags:
+        - Admin & Moderation
+      summary: Moderation queue
+      description: Get items pending moderation approval (staff only)
+      security:
+        - TokenAuth: []
+      responses:
+        "200":
+          description: Items pending moderation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  pending_products:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Product'
+                  pending_services:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Service'
+                  counts:
+                    type: object
+                    properties:
+                      total_pending_products:
+                        type: integer
+                      total_pending_services:
+                        type: integer
+        "403":
+          description: Admin access required
+
+  /api/admin/reports/:
+    get:
+      tags:
+        - Admin & Moderation
+      summary: Generate reports
+      description: Generate various administrative reports (staff only)
+      security:
+        - TokenAuth: []
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [overview, location_performance, category_analysis, user_activity]
+            default: overview
+          description: Type of report to generate
+      responses:
+        "200":
+          description: Generated report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminReport'
+        "403":
+          description: Admin access required
+
+  # ===========================
+  #  BULK OPERATIONS
+  # ===========================
+  /api/bulk/operations/:
+    post:
+      tags:
+        - Bulk Operations
+      summary: Perform bulk operations
+      description: |
+        Perform bulk actions on multiple products or services.
+        Supports delete, publish, draft, feature, and unfeature operations.
+      security:
+        - TokenAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkOperationRequest'
+      responses:
+        "200":
+          description: Bulk operation completed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  action:
+                    type: string
+                  item_type:
+                    type: string
+                  updated_count:
+                    type: integer
+        "400":
+          description: Invalid operation or parameters
+        "404":
+          description: No items found or access denied
+
+  # ===========================
+  #  DATA EXPORT
+  # ===========================
+  /api/export/data/:
+    get:
+      tags:
+        - Bulk Operations
+      summary: Export user data
+      description: |
+        Export user's data in JSON or CSV format.
+        Includes products, services, and ratings.
+      security:
+        - TokenAuth: []
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [all, products, services, ratings]
+            default: all
+          description: Type of data to export
+        - name: format
+          in: query
+          schema:
+            type: string
+            enum: [json, csv]
+            default: json
+          description: Export format
+      responses:
+        "200":
+          description: Exported data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportData'
+
+  # ===========================
+  #  SYSTEM
+  # ===========================
+  /api/health/:
+    get:
+      tags:
+        - System
+      summary: Health check
+      description: API health status and basic system information
+      responses:
+        "200":
+          description: System is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "healthy"
+                  timestamp:
+                    type: string
+                    format: date-time
+                  database:
+                    type: string
+                    example: "connected"
+                  version:
+                    type: string
+                    example: "1.0.0"
+                  active_countries:
+                    type: integer
+                  total_listings:
+                    type: integer
+                  published_listings:
+                    type: integer
+        "503":
+          description: System is unhealthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "unhealthy"
+                  error:
+                    type: string
+
+  /api/version/:
+    get:
+      tags:
+        - System
+      summary: API version info
+      description: Get API version and available endpoints information
+      responses:
+        "200":
+          description: API version information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  api_version:
+                    type: string
+                  django_version:
+                    type: string
+                  endpoints:
+                    type: object
+                  features:
+                    type: array
+                    items:
+                      type: string
+
+components:
+  securitySchemes:
+    TokenAuth:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: "Token-based authentication. Use format: `Token <your-token>`"
+
+  schemas:
+    # ===========================
+    #  LOCATION SCHEMAS
+    # ===========================
+    Country:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: "Nigeria"
+        code:
+          type: string
+          example: "NG"
+        phone_code:
+          type: string
+          example: "+234"
+        currency_code:
+          type: string
+          example: "NGN"
+        currency_symbol:
+          type: string
+          example: "₦"
+        flag_emoji:
+          type: string
+          example: "🇳🇬"
+        continent:
+          type: string
+          example: "Africa"
+        display_name:
+          type: string
+          example: "🇳🇬 Nigeria"
+
+    State:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: "Lagos"
+        code:
+          type: string
+          example: "LA"
+        type:
+          type: string
+          example: "State"
+        country:
+          type: integer
+          example: 1
+        country_name:
+          type: string
+          example: "Nigeria"
+        display_name:
+          type: string
+          example: "Lagos (LA)"
+
+    City:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: "Lagos"
+        state:
+          type: integer
+          example: 1
+        country:
+          type: integer
+          example: 1
+        state_name:
+          type: string
+          example: "Lagos"
+        country_name:
+          type: string
+          example: "Nigeria"
+        latitude:
+          type: number
+          format: float
+          example: 6.5244
+        longitude:
+          type: number
+          format: float
+          example: 3.3792
+        population:
+          type: integer
+          example: 15000000
+        is_capital:
+          type: boolean
+          example: false
+        is_major_city:
+          type: boolean
+          example: true
+        full_address:
+          type: string
+          example: "Lagos, Lagos, Nigeria"
+
+    LocationHierarchy:
+      type: object
+      properties:
+        country:
+          $ref: '#/components/schemas/Country'
+        state:
+          $ref: '#/components/schemas/State'
+        city:
+          $ref: '#/components/schemas/City'
+
+    # ===========================
+    #  CATEGORY SCHEMAS
+    # ===========================
+    Category:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: "Electronics"
+        slug:
+          type: string
+          example: "electronics"
+        description:
+          type: string
+          example: "Electronic devices and gadgets"
+        category_type:
+          type: string
+          enum: [both, product, service]
+          example: "both"
+        parent:
+          type: integer
+          nullable: true
+          example: null
+        parent_name:
+          type: string
+          nullable: true
+          example: null
+        icon:
+          type: string
+          example: "📱"
+        image:
+          type: string
+          format: uri
+          nullable: true
+        is_featured:
+          type: boolean
+          example: true
+        subcategories:
+          type: array
+          items:
+            $ref: '#/components/schemas/Category'
+        full_path:
+          type: string
+          example: "Electronics"
+        products_count:
+          type: integer
+          example: 150
+        services_count:
+          type: integer
+          example: 25
+
+    # ===========================
+    #  PRODUCT SCHEMAS
+    # ===========================
+    Product:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 123
+        slug:
+          type: string
+          example: "iphone-14-pro-max-256gb"
+        product_name:
+          type: string
+          example: "iPhone 14 Pro Max 256GB"
+        product_description:
+          type: string
+          example: "Brand new iPhone 14 Pro Max with 256GB storage"
+        featured_image:
+          type: string
+          format: uri
+          example: "https://example.com/media/products/iphone14.jpg"
+        gallery_images:
+          type: array
+          items:
+            type: string
+            format: uri
+        product_price:
+          type: number
+          example: 450000
+        original_price:
+          type: number
+          nullable: true
+          example: 500000
+        currency:
+          type: string
+          example: "NGN"
+        is_negotiable:
+          type: boolean
+          example: true
+        product_brand:
+          type: string
+          example: "Apple"
+        product_model:
+          type: string
+          example: "iPhone 14 Pro Max"
+        product_condition:
+          type: string
+          enum: [new, used, refurbished]
+          example: "new"
+        product_status:
+          type: string
+          enum: [draft, pending, published, sold]
+          example: "published"
+        tags:
+          type: string
+          example: "smartphone, apple, iphone, mobile phone"
+        address_details:
+          type: string
+          example: "Victoria Island, Lagos"
+        provider_phone:
+          type: string
+          example: "+2348012345678"
+        provider_email:
+          type: string
+          format: email
+          example: "seller@example.com"
+        provider_whatsapp:
+          type: string
+          example: "+2348012345678"
+        is_paid:
+          type: boolean
+          example: true
+        is_promoted:
+          type: boolean
+          example: false
+        is_featured:
+          type: boolean
+          example: false
+        promotion_fee:
+          type: number
+          example: 0
+        views_count:
+          type: integer
+          example: 150
+        favorites_count:
+          type: integer
+          example: 12
+        meta_title:
+          type: string
+          example: "iPhone 14 Pro Max 256GB - Best Price in Lagos"
+        meta_description:
+          type: string
+          example: "Buy iPhone 14 Pro Max 256GB at the best price in Lagos"
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        published_at:
+          type: string
+          format: date-time
+          nullable: true
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+        user:
+          type: integer
+          example: 456
+        country:
+          type: integer
+          example: 1
+        state:
+          type: integer
+          example: 1
+        city:
+          type: integer
+          example: 1
+        category:
+          type: integer
+          example: 1
+        # Computed fields
+        average_rating:
+          type: number
+          format: float
+          example: 4.5
+        rating_count:
+          type: integer
+          example: 8
+        formatted_price:
+          type: string
+          example: "₦450,000"
+        discount_percentage:
+          type: number
+          format: float
+          example: 10.0
+        currency_symbol:
+          type: string
+          example: "₦"
+        full_location:
+          type: string
+          example: "Lagos, Lagos, Nigeria"
+        tags_list:
+          type: array
+          items:
+            type: string
+        # Related details
+        user_details:
+          $ref: '#/components/schemas/User'
+        country_details:
+          $ref: '#/components/schemas/Country'
+        state_details:
+          $ref: '#/components/schemas/State'
+        city_details:
+          $ref: '#/components/schemas/City'
+        category_details:
+          $ref: '#/components/schemas/Category'
+        recent_ratings:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductRating'
+
+    ProductCreateRequest:
+      type: object
+      required:
+        - product_name
+        - product_description
+        - product_price
+        - country
+        - state
+        - city
+        - category
+      properties:
+        product_name:
+          type: string
+          minLength: 3
+          maxLength: 200
+          example: "iPhone 14 Pro Max"
+        product_description:
+          type: string
+          example: "Brand new iPhone 14 Pro Max with warranty"
+        featured_image:
+          type: string
+          format: binary
+          description: "Product main image"
+        gallery_images:
+          type: array
+          items:
+            type: string
+            format: binary
+          description: "Additional product images"
+        product_price:
+          type: number
+          minimum: 0.01
+          maximum: 999999999
+          example: 450000
+        original_price:
+          type: number
+          minimum: 0.01
+          example: 500000
+        is_negotiable:
+          type: boolean
+          default: false
+        country:
+          type: integer
+          example: 1
+        state:
+          type: integer
+          example: 1
+        city:
+          type: integer
+          example: 1
+        address_details:
+          type: string
+          example: "Victoria Island, Lagos"
+        category:
+          type: integer
+          example: 1
+        tags:
+          type: string
+          example: "smartphone, apple, iphone"
+        product_brand:
+          type: string
+          example: "Apple"
+        product_model:
+          type: string
+          example: "iPhone 14 Pro Max"
+        product_condition:
+          type: string
+          enum: [new, used, refurbished]
+          default: new
+        provider_phone:
+          type: string
+          example: "+2348012345678"
+        provider_email:
+          type: string
+          format: email
+          example: "seller@example.com"
+        provider_whatsapp:
+          type: string
+          example: "+2348012345678"
+        is_promoted:
+          type: boolean
+          default: false
+        meta_title:
+          type: string
+          maxLength: 200
+        meta_description:
+          type: string
+          maxLength: 300
+
+    ProductUpdateRequest:
+      type: object
+      properties:
+        product_name:
+          type: string
+          minLength: 3
+          maxLength: 200
+        product_description:
+          type: string
+        featured_image:
+          type: string
+          format: binary
+        gallery_images:
+          type: array
+          items:
+            type: string
+            format: binary
+        product_price:
+          type: number
+          minimum: 0.01
+        original_price:
+          type: number
+          minimum: 0.01
+        is_negotiable:
+          type: boolean
+        address_details:
+          type: string
+        tags:
+          type: string
+        product_brand:
+          type: string
+        product_model:
+          type: string
+        product_condition:
+          type: string
+          enum: [new, used, refurbished]
+        provider_phone:
+          type: string
+        provider_email:
+          type: string
+          format: email
+        provider_whatsapp:
+          type: string
+        meta_title:
+          type: string
+        meta_description:
+          type: string
+
+    # ===========================
+    #  SERVICE SCHEMAS
+    # ===========================
+    Service:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 789
+        slug:
+          type: string
+          example: "web-development-services"
+        service_name:
+          type: string
+          example: "Professional Web Development"
+        service_description:
+          type: string
+          example: "Full-stack web development services"
+        featured_image:
+          type: string
+          format: uri
+        gallery_images:
+          type: array
+          items:
+            type: string
+            format: uri
+        serves_remote:
+          type: boolean
+          example: true
+        service_radius:
+          type: integer
+          example: 50
+        tags:
+          type: string
+          example: "web development, react, django"
+        provider_name:
+          type: string
+          example: "John Doe"
+        provider_title:
+          type: string
+          example: "Senior Full-Stack Developer"
+        provider_bio:
+          type: string
+          example: "Experienced developer with 5+ years"
+        provider_expertise:
+          type: string
+          example: "React, Django, PostgreSQL"
+        provider_experience:
+          type: string
+          example: "5 years"
+        provider_certifications:
+          type: string
+          example: "AWS Certified, Google Cloud"
+        provider_languages:
+          type: string
+          example: "English, French"
+        provider_email:
+          type: string
+          format: email
+          example: "john@example.com"
+        provider_phone:
+          type: string
+          example: "+2348012345678"
+        provider_whatsapp:
+          type: string
+          example: "+2348012345678"
+        provider_website:
+          type: string
+          format: uri
+          example: "https://johndoe.dev"
+        provider_linkedin:
+          type: string
+          format: uri
+          example: "https://linkedin.com/in/johndoe"
+        starting_price:
+          type: number
+          example: 50000
+        max_price:
+          type: number
+          example: 200000
+        currency:
+          type: string
+          example: "NGN"
+        price_type:
+          type: string
+          enum: [fixed, hourly, daily, project]
+          example: "project"
+        service_status:
+          type: string
+          enum: [draft, pending, published]
+          example: "published"
+        response_time:
+          type: string
+          example: "Within 24 hours"
+        availability:
+          type: string
+          example: "Monday - Friday, 9AM - 6PM"
+        is_paid:
+          type: boolean
+          example: true
+        is_promoted:
+          type: boolean
+          example: false
+        is_featured:
+          type: boolean
+          example: false
+        is_verified:
+          type: boolean
+          example: false
+        promotion_fee:
+          type: number
+          example: 0
+        views_count:
+          type: integer
+          example: 75
+        contacts_count:
+          type: integer
+          example: 15
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        published_at:
+          type: string
+          format: date-time
+          nullable: true
+        # Computed fields and related data similar to Product
+        average_rating:
+          type: number
+        rating_count:
+          type: integer
+        formatted_price_range:
+          type: string
+          example: "₦50,000 - ₦200,000"
+        user_details:
+          $ref: '#/components/schemas/User'
+        country_details:
+          $ref: '#/components/schemas/Country'
+        state_details:
+          $ref: '#/components/schemas/State'
+        city_details:
+          $ref: '#/components/schemas/City'
+        category_details:
+          $ref: '#/components/schemas/Category'
+
+    ServiceCreateRequest:
+      type: object
+      required:
+        - service_name
+        - service_description
+        - country
+        - state
+        - city
+        - category
+        - provider_name
+        - provider_email
+      properties:
+        service_name:
+          type: string
+          minLength: 3
+          maxLength: 200
+          example: "Web Development Services"
+        service_description:
+          type: string
+          example: "Professional web development services"
+        featured_image:
+          type: string
+          format: binary
+        gallery_images:
+          type: array
+          items:
+            type: string
+            format: binary
+        country:
+          type: integer
+          example: 1
+        state:
+          type: integer
+          example: 1
+        city:
+          type: integer
+          example: 1
+        serves_remote:
+          type: boolean
+          default: false
+        service_radius:
+          type: integer
+          minimum: 0
+          maximum: 1000
+          example: 50
+        category:
+          type: integer
+          example: 1
+        tags:
+          type: string
+          example: "web development, programming"
+        provider_name:
+          type: string
+          example: "John Doe"
+        provider_title:
+          type: string
+          example: "Senior Developer"
+        provider_bio:
+          type: string
+        provider_expertise:
+          type: string
+        provider_experience:
+          type: string
+        provider_certifications:
+          type: string
+        provider_languages:
+          type: string
+        provider_email:
+          type: string
+          format: email
+          example: "john@example.com"
+        provider_phone:
+          type: string
+        provider_whatsapp:
+          type: string
+        provider_website:
+          type: string
+          format: uri
+        provider_linkedin:
+          type: string
+          format: uri
+        starting_price:
+          type: number
+          minimum: 0
+        max_price:
+          type: number
+          minimum: 0
+        price_type:
+          type: string
+          enum: [fixed, hourly, daily, project]
+          default: project
+        response_time:
+          type: string
+        availability:
+          type: string
+        is_promoted:
+          type: boolean
+          default: false
+        meta_title:
+          type: string
+        meta_description:
+          type: string
+
+    ServiceUpdateRequest:
+      type: object
+      properties:
+        service_name:
+          type: string
+        service_description:
+          type: string
+        featured_image:
+          type: string
+          format: binary
+        gallery_images:
+          type: array
+          items:
+            type: string
+            format: binary
+        serves_remote:
+          type: boolean
+        service_radius:
+          type: integer
+        tags:
+          type: string
+        provider_name:
+          type: string
+        provider_title:
+          type: string
+        provider_bio:
+          type: string
+        provider_expertise:
+          type: string
+        provider_experience:
+          type: string
+        provider_certifications:
+          type: string
+        provider_languages:
+          type: string
+        provider_email:
+          type: string
+          format: email
+        provider_phone:
+          type: string
+        provider_whatsapp:
+          type: string
+        provider_website:
+          type: string
+          format: uri
+        provider_linkedin:
+          type: string
+          format: uri
+        starting_price:
+          type: number
+        max_price:
+          type: number
+        price_type:
+          type: string
+          enum: [fixed, hourly, daily, project]
+        response_time:
+          type: string
+        availability:
+          type: string
+        meta_title:
+          type: string
+        meta_description:
+          type: string
+
+    # ===========================
+    #  RATING SCHEMAS
+    # ===========================
+    ProductRating:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        user:
+          type: integer
+          example: 123
+        user_details:
+          $ref: '#/components/schemas/User'
+        user_name:
+          type: string
+          example: "john_doe"
+        rating:
+          type: number
+          format: float
+          minimum: 1.0
+          maximum: 5.0
+          example: 4.5
+        review_title:
+          type: string
+          example: "Great product!"
+        review:
+          type: string
+          example: "This product exceeded my expectations"
+        pros:
+          type: string
+          example: "Fast delivery, good quality"
+        cons:
+          type: string
+          example: "Packaging could be better"
+        would_recommend:
+          type: boolean
+          example: true
+        is_verified_purchase:
+          type: boolean
+          example: true
+        helpful_count:
+          type: integer
+          example: 5
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ProductRatingRequest:
+      type: object
+      required:
+        - rating
+      properties:
+        rating:
+          type: number
+          format: float
+          minimum: 1.0
+          maximum: 5.0
+          example: 4.5
+        review_title:
+          type: string
+          maxLength: 200
+          example: "Excellent product"
+        review:
+          type: string
+          maxLength: 1000
+          example: "Very satisfied with this purchase"
+        pros:
+          type: string
+          maxLength: 500
+        cons:
+          type: string
+          maxLength: 500
+        would_recommend:
+          type: boolean
+          default: true
+
+    ServiceRating:
+      type: object
+      properties:
+        id:
+          type: integer
+        user:
+          type: integer
+        user_details:
+          $ref: '#/components/schemas/User'
+        user_name:
+          type: string
+        rating:
+          type: number
+          format: float
+          minimum: 1.0
+          maximum: 5.0
+        review_title:
+          type: string
+        review:
+          type: string
+        communication_rating:
+          type: number
+          format: float
+          minimum: 1.0
+          maximum: 5.0
+        quality_rating:
+          type: number
+          format: float
+          minimum: 1.0
+          maximum: 5.0
+        timeliness_rating:
+          type: number
+          format: float
+          minimum: 1.0
+          maximum: 5.0
+        would_recommend:
+          type: boolean
+        would_hire_again:
+          type: boolean
+        is_verified_customer:
+          type: boolean
+        helpful_count:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ServiceRatingRequest:
+      type: object
+      required:
+        - rating
+      properties:
+        rating:
+          type: number
+          format: float
+          minimum: 1.0
+          maximum: 5.0
+        review_title:
+          type: string
+          maxLength: 200
+        review:
+          type: string
+          maxLength: 1000
+        communication_rating:
+          type: number
+          format: float
+          minimum: 1.0
+          maximum: 5.0
+        quality_rating:
+          type: number
+          format: float
+          minimum: 1.0
+          maximum: 5.0
+        timeliness_rating:
+          type: number
+          format: float
+          minimum: 1.0
+          maximum: 5.0
+        would_recommend:
+          type: boolean
+          default: true
+        would_hire_again:
+          type: boolean
+          default: true
+
+    # ===========================
+    #  SEARCH & PAGE SCHEMAS
+    # ===========================
+    HomePageResponse:
+      type: object
+      properties:
+        promoted_products:
+          type: array
+          items:
+            $ref: '#/components/schemas/Product'
+        promoted_services:
+          type: array
+          items:
+            $ref: '#/components/schemas/Service'
+        products:
+          type: array
+          items:
+            $ref: '#/components/schemas/Product'
+        services:
+          type: array
+          items:
+            $ref: '#/components/schemas/Service'
+        filter_options:
+          type: object
+          properties:
+            countries:
+              type: array
+              items:
+                $ref: '#/components/schemas/Country'
+            categories:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  name:
+                    type: string
+                  icon:
+                    type: string
+        applied_filters:
+          type: object
+          properties:
+            search:
+              type: string
+            category:
+              type: string
+            country:
+              type: string
+            state:
+              type: string
+            city:
+              type: string
+            min_rating:
+              type: string
+            max_price:
+              type: string
+        total_results:
+          type: object
+          properties:
+            products:
+              type: integer
+            services:
+              type: integer
+
+    SearchResponse:
+      type: object
+      properties:
+        results:
+          type: object
+          properties:
+            products:
+              type: array
+              items:
+                $ref: '#/components/schemas/Product'
+            services:
+              type: array
+              items:
+                $ref: '#/components/schemas/Service'
+        query:
+          type: string
+        filters_applied:
+          type: object
+          properties:
+            category:
+              type: string
+            location:
+              type: string
+            price_range:
+              type: array
+              items:
+                type: number
+              nullable: true
+            min_rating:
+              type: number
+              nullable: true
+
+    # ===========================
+    #  PAYMENT SCHEMAS
+    # ===========================
+    PaymentInitiateRequest:
+      type: object
+      properties:
+        product_id:
+          type: integer
+          example: 123
+          description: Product to pay for (either product_id or service_id required)
+        service_id:
+          type: integer
+          example: 456
+          description: Service to pay for (either product_id or service_id required)
+      oneOf:
+        - required: [product_id]
+        - required: [service_id]
+
+    PaymentInitiateResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Payment initialized successfully"
+        data:
+          type: object
+          properties:
+            authorization_url:
+              type: string
+              format: uri
+              example: "https://checkout.paystack.com/abc123"
+            reference:
+              type: string
+              example: "abc123def456"
+            amount:
+              type: number
+              example: 1000
+            item_name:
+              type: string
+              example: "Product Listing Fee - iPhone 14"
+            item_type:
+              type: string
+              enum: [product, service]
+            order_id:
+              type: integer
+              example: 123
+            callback_url:
+              type: string
+              format: uri
+
+    PaymentVerifyResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Product payment successful. Your product is now listed."
+        data:
+          type: object
+          properties:
+            item_type:
+              type: string
+              enum: [product, service]
+            item_id:
+              type: integer
+            item_name:
+              type: string
+            amount_paid:
+              type: number
+            status:
+              type: string
+              example: "published"
+            reference:
+              type: string
+            published_at:
+              type: string
+              format: date-time
+
+    PaymentStatusResponse:
+      type: object
+      properties:
+        item_type:
+          type: string
+          enum: [product, service]
+        item_id:
+          type: integer
+        item_name:
+          type: string
+        is_paid:
+          type: boolean
+        status:
+          type: string
+        is_promoted:
+          type: boolean
+        promotion_fee:
+          type: number
+        published_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    PaymentHistoryResponse:
+      type: object
+      properties:
+        summary:
+          type: object
+          properties:
+            total_payments:
+              type: integer
+            total_products_paid:
+              type: integer
+            total_services_paid:
+              type: integer
+            total_amount_paid:
+              type: number
+            base_listing_fee:
+              type: number
+              example: 1000
+        paid_products:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              product_name:
+                type: string
+              product_status:
+                type: string
+              is_promoted:
+                type: boolean
+              promotion_fee:
+                type: number
+              published_at:
+                type: string
+                format: date-time
+              created_at:
+                type: string
+                format: date-time
+        paid_services:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              service_name:
+                type: string
+              service_status:
+                type: string
+              is_promoted:
+                type: boolean
+              promotion_fee:
+                type: number
+              published_at:
+                type: string
+                format: date-time
+              created_at:
+                type: string
+                format: date-time
+
+    PromotionPaymentRequest:
+      type: object
+      required:
+        - item_type
+        - item_id
+      properties:
+        item_type:
+          type: string
+          enum: [product, service]
+          example: "product"
+        item_id:
+          type: integer
+          minimum: 1
+          example: 123
+        promotion_duration:
+          type: integer
+          minimum: 1
+          maximum: 365
+          default: 30
+          description: "Promotion duration in days (1-365)"
+          example: 30
+
+    PromotionPaymentResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Promotion payment initialized successfully"
+        data:
+          type: object
+          properties:
+            authorization_url:
+              type: string
+              format: uri
+            reference:
+              type: string
+            amount:
+              type: number
+              example: 1500
+            item_name:
+              type: string
+              example: "Promotion Fee - iPhone 14"
+            promotion_duration:
+              type: integer
+              example: 30
+            daily_rate:
+              type: number
+              example: 50
+
+    # ===========================
+    #  ANALYTICS SCHEMAS
+    # ===========================
+    TrendingSearch:
+      type: object
+      properties:
+        search_term:
+          type: string
+          example: "iphone"
+        search_count:
+          type: integer
+          example: 25
+        avg_results:
+          type: number
+          format: float
+          example: 15.5
+
+    PopularCategory:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        icon:
+          type: string
+        products_count:
+          type: integer
+        services_count:
+          type: integer
+        total_count:
+          type: integer
+
+    UserStats:
+      type: object
+      properties:
+        total_products:
+          type: integer
+        published_products:
+          type: integer
+        pending_products:
+          type: integer
+        total_services:
+          type: integer
+        published_services:
+          type: integer
+        pending_services:
+          type: integer
+        total_product_ratings:
+          type: integer
+        total_service_ratings:
+          type: integer
+        top_locations:
+          type: array
+          items:
+            type: object
+            properties:
+              country__name:
+                type: string
+              state__name:
+                type: string
+              city__name:
+                type: string
+              count:
+                type: integer
+        top_categories:
+          type: array
+          items:
+            type: object
+            properties:
+              category__name:
+                type: string
+              count:
+                type: integer
+
+    UserDashboard:
+      type: object
+      properties:
+        products:
+          type: object
+          properties:
+            total:
+              type: integer
+            published:
+              type: integer
+            draft:
+              type: integer
+            pending:
+              type: integer
+            sold:
+              type: integer
+        services:
+          type: object
+          properties:
+            total:
+              type: integer
+            published:
+              type: integer
+            draft:
+              type: integer
+            pending:
+              type: integer
+        recent_activity:
+          type: object
+          properties:
+            products_created:
+              type: integer
+            services_created:
+              type: integer
+            total_views:
+              type: integer
+            total_contacts:
+              type: integer
+            total_favorites:
+              type: integer
+        performance:
+          type: object
+          properties:
+            avg_product_rating:
+              type: number
+              format: float
+            avg_service_rating:
+              type: number
+              format: float
+            total_reviews:
+              type: integer
+        recent_products:
+          type: array
+          items:
+            $ref: '#/components/schemas/Product'
+        recent_services:
+          type: array
+          items:
+            $ref: '#/components/schemas/Service'
+        favorites:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              product:
+                type: integer
+                nullable: true
+              service:
+                type: integer
+                nullable: true
+              product_details:
+                $ref: '#/components/schemas/Product'
+              service_details:
+                $ref: '#/components/schemas/Service'
+              item_type:
+                type: string
+                enum: [product, service]
+              created_at:
+                type: string
+                format: date-time
+
+    # ===========================
+    #  ADMIN SCHEMAS
+    # ===========================
+    AdminStats:
+      type: object
+      properties:
+        overview:
+          type: object
+          properties:
+            total_users:
+              type: integer
+            total_products:
+              type: integer
+            total_services:
+              type: integer
+            total_countries:
+              type: integer
+            total_categories:
+              type: integer
+        recent_activity:
+          type: object
+          properties:
+            new_users_this_week:
+              type: integer
+            new_products_this_week:
+              type: integer
+            new_services_this_week:
+              type: integer
+            payments_this_week:
+              type: integer
+        performance:
+          type: object
+          properties:
+            total_revenue:
+              type: number
+            avg_listing_time:
+              type: number
+            conversion_rate:
+              type: number
+            user_engagement:
+              type: number
+
+    AdminReport:
+      type: object
+      properties:
+        report_type:
+          type: string
+          enum: [overview, location_performance, category_analysis, user_activity]
+        generated_at:
+          type: string
+          format: date-time
+        data:
+          type: array
+          items:
+            type: object
+          description: "Report data structure varies by report type"
+
+    # ===========================
+    #  BULK OPERATION SCHEMAS
+    # ===========================
+    BulkOperationRequest:
+      type: object
+      required:
+        - action
+        - item_type
+        - item_ids
+      properties:
+        action:
+          type: string
+          enum: [delete, publish, draft, feature, unfeature]
+          example: "publish"
+        item_type:
+          type: string
+          enum: [products, services]
+          example: "products"
+        item_ids:
+          type: array
+          items:
+            type: integer
+            minimum: 1
+          minItems: 1
+          maxItems: 100
+          example: [1, 2, 3, 4, 5]
+
+    ExportData:
+      type: object
+      properties:
+        exported_at:
+          type: string
+          format: date-time
+        user:
+          type: string
+        products:
+          type: array
+          items:
+            type: object
+            properties:
+              product_name:
+                type: string
+              product_description:
+                type: string
+              product_price:
+                type: number
+              product_condition:
+                type: string
+              product_status:
+                type: string
+              created_at:
+                type: string
+                format: date-time
+              category__name:
+                type: string
+              country__name:
+                type: string
+              state__name:
+                type: string
+              city__name:
+                type: string
+        services:
+          type: array
+          items:
+            type: object
+            properties:
+              service_name:
+                type: string
+              service_description:
+                type: string
+              starting_price:
+                type: number
+              service_status:
+                type: string
+              provider_name:
+                type: string
+              created_at:
+                type: string
+                format: date-time
+              category__name:
+                type: string
+              country__name:
+                type: string
+              state__name:
+                type: string
+              city__name:
+                type: string
+        ratings:
+          type: object
+          properties:
+            product_ratings:
+              type: array
+              items:
+                type: object
+                properties:
+                  product__product_name:
+                    type: string
+                  rating:
+                    type: number
+                  review:
+                    type: string
+                  created_at:
+                    type: string
+                    format: date-time
+            service_ratings:
+              type: array
+              items:
+                type: object
+                properties:
+                  service__service_name:
+                    type: string
+                  rating:
+                    type: number
+                  review:
+                    type: string
+                  created_at:
+                    type: string
+                    format: date-time
+
+    # ===========================
+    #  UTILITY SCHEMAS
+    # ===========================
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 123
+        username:
+          type: string
+          example: "john_doe"
+        email:
+          type: string
+          format: email
+          example: "john@example.com"
+        first_name:
+          type: string
+          example: "John"
+        last_name:
+          type: string
+          example: "Doe"
+        full_name:
+          type: string
+          example: "John Doe"
+
+    ValidationError:
+      type: object
+      properties:
+        field_name:
+          type: array
+          items:
+            type: string
+          description: List of validation errors for the field
+          example: ["This field is required."]
+      additionalProperties:
+        type: array
+        items:
+          type: string
+      example:
+        product_name: ["Product name must be at least 3 characters long."]
+        product_price: ["Price must be greater than zero."]
+        country: ["Invalid location hierarchy."]
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+          example: "Invalid request parameters"
+        detail:
+          type: string
+          description: Detailed error description
+          example: "The provided location hierarchy is invalid"
