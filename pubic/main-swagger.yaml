@@ -49,7 +49,7 @@ paths:
   # ===========================
   #  LOCATION MANAGEMENT
   # ===========================
-  /api/countries/:
+  /api/main/countries/:
     get:
       tags:
         - Location Management
@@ -84,7 +84,7 @@ paths:
                     items:
                       $ref: '#/components/schemas/Country'
 
-  /api/countries/popular/:
+  /api/main/countries/popular/:
     get:
       tags:
         - Location Management
@@ -100,7 +100,7 @@ paths:
                 items:
                   $ref: '#/components/schemas/Country'
 
-  /api/states/:
+  /api/main/states/:
     get:
       tags:
         - Location Management
@@ -132,7 +132,7 @@ paths:
                     items:
                       $ref: '#/components/schemas/State'
 
-  /api/cities/:
+  /api/main/cities/:
     get:
       tags:
         - Location Management
@@ -169,7 +169,7 @@ paths:
                     items:
                       $ref: '#/components/schemas/City'
 
-  /api/cities/major_cities/:
+  /api/main/cities/major_cities/:
     get:
       tags:
         - Location Management
@@ -191,7 +191,7 @@ paths:
                 items:
                   $ref: '#/components/schemas/City'
 
-  /api/location/hierarchy/:
+  /api/main/location/hierarchy/:
     get:
       tags:
         - Location Management
@@ -226,7 +226,7 @@ paths:
   # ===========================
   #  CATEGORIES
   # ===========================
-  /api/categories/:
+  /api/main/categories/:
     get:
       tags:
         - Categories
@@ -259,7 +259,7 @@ paths:
                     items:
                       $ref: '#/components/schemas/Category'
 
-  /api/categories/root_categories/:
+  /api/main/categories/root_categories/:
     get:
       tags:
         - Categories
@@ -275,7 +275,7 @@ paths:
                 items:
                   $ref: '#/components/schemas/Category'
 
-  /api/categories/{id}/subcategories/:
+  /api/main/categories/{id}/subcategories/:
     get:
       tags:
         - Categories
@@ -301,7 +301,7 @@ paths:
   # ===========================
   #  PRODUCTS
   # ===========================
-  /api/products/:
+  /api/main/products/:
     get:
       tags:
         - Products
@@ -417,7 +417,7 @@ paths:
         "401":
           description: Authentication required
 
-  /api/products/{id}/:
+  /api/main/products/{id}/:
     get:
       tags:
         - Products
@@ -526,7 +526,7 @@ paths:
         "404":
           description: Product not found
 
-  /api/products/{id}/toggle_favorite/:
+  /api/main/products/{id}/toggle_favorite/:
     post:
       tags:
         - Products
@@ -551,7 +551,7 @@ paths:
                   favorited:
                     type: boolean
 
-  /api/products/favorites/:
+  /api/main/products/favorites/:
     get:
       tags:
         - Products
@@ -569,7 +569,7 @@ paths:
                 items:
                   $ref: '#/components/schemas/Product'
 
-  /api/products/nearby/:
+  /api/main/products/nearby/:
     get:
       tags:
         - Products
@@ -597,7 +597,7 @@ paths:
   # ===========================
   #  SERVICES
   # ===========================
-  /api/services/:
+  /api/main/services/:
     get:
       tags:
         - Services
@@ -698,7 +698,7 @@ paths:
         "400":
           description: Validation error
 
-  /api/services/{id}/:
+  /api/main/services/{id}/:
     get:
       tags:
         - Services
@@ -772,7 +772,7 @@ paths:
         "204":
           description: Service deleted successfully
 
-  /api/services/{id}/contact/:
+  /api/main/services/{id}/contact/:
     post:
       tags:
         - Services
@@ -801,7 +801,7 @@ paths:
   # ===========================
   #  RATINGS & REVIEWS
   # ===========================
-  /api/products/{product_id}/ratings/:
+  /api/main/products/{product_id}/ratings/:
     get:
       tags:
         - Ratings & Reviews
@@ -850,7 +850,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ProductRating'
 
-  /api/products/{product_id}/ratings/{id}/:
+  /api/main/products/{product_id}/ratings/{id}/:
     get:
       tags:
         - Ratings & Reviews
@@ -922,7 +922,7 @@ paths:
         "204":
           description: Rating deleted successfully
 
-  /api/services/{service_id}/ratings/:
+  /api/main/services/{service_id}/ratings/:
     get:
       tags:
         - Ratings & Reviews
@@ -969,7 +969,7 @@ paths:
   # ===========================
   #  SEARCH & DISCOVERY
   # ===========================
-  /api/home/:
+  /api/main/home/:
     get:
       tags:
         - Search & Discovery
@@ -1025,7 +1025,7 @@ paths:
         "400":
           description: Invalid location hierarchy
 
-  /api/search/:
+  /api/main/search/:
     get:
       tags:
         - Search & Discovery
@@ -1086,7 +1086,7 @@ paths:
         "400":
           description: Invalid search parameters
 
-  /api/stats/:
+  /api/main/stats/:
     get:
       tags:
         - Search & Discovery
@@ -1105,7 +1105,7 @@ paths:
   # ===========================
   #  PAYMENTS
   # ===========================
-  /api/payments/initiate/:
+  /api/main/payments/initiate/:
     post:
       tags:
         - Payments
@@ -1133,7 +1133,7 @@ paths:
         "404":
           description: Item not found
 
-  /api/payments/verify/:
+  /api/main/payments/verify/:
     post:
       tags:
         - Payments
@@ -1168,7 +1168,7 @@ paths:
         "403":
           description: User mismatch security error
 
-  /api/payments/status/:
+  /api/main/payments/status/:
     get:
       tags:
         - Payments
@@ -1199,7 +1199,7 @@ paths:
         "404":
           description: Item not found
 
-  /api/payments/history/:
+  /api/main/payments/history/:
     get:
       tags:
         - Payments
@@ -1215,7 +1215,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaymentHistoryResponse'
 
-  /api/payments/promote/:
+  /api/main/payments/promote/:
     post:
       tags:
         - Payments
@@ -1244,7 +1244,7 @@ paths:
   # ===========================
   #  ANALYTICS
   # ===========================
-  /api/analytics/trending-searches/:
+  /api/main/analytics/trending-searches/:
     get:
       tags:
         - Analytics
@@ -1266,7 +1266,7 @@ paths:
                     type: string
                     example: "7 days"
 
-  /api/analytics/popular-categories/:
+  /api/main/analytics/popular-categories/:
     get:
       tags:
         - Analytics
@@ -1298,7 +1298,7 @@ paths:
                 items:
                   $ref: '#/components/schemas/PopularCategory'
 
-  /api/dashboard/:
+  /api/main/dashboard/:
     get:
       tags:
         - Analytics
@@ -1319,7 +1319,7 @@ paths:
   # ===========================
   #  ADMIN & MODERATION
   # ===========================
-  /api/admin/stats/:
+  /api/main/admin/stats/:
     get:
       tags:
         - Admin & Moderation
@@ -1337,7 +1337,7 @@ paths:
         "403":
           description: Admin access required
 
-  /api/admin/moderation/:
+  /api/main/admin/moderation/:
     get:
       tags:
         - Admin & Moderation
@@ -1371,7 +1371,7 @@ paths:
         "403":
           description: Admin access required
 
-  /api/admin/reports/:
+  /api/main/admin/reports/:
     get:
       tags:
         - Admin & Moderation
@@ -1400,7 +1400,7 @@ paths:
   # ===========================
   #  BULK OPERATIONS
   # ===========================
-  /api/bulk/operations/:
+  /api/main/bulk/operations/:
     post:
       tags:
         - Bulk Operations
@@ -1440,7 +1440,7 @@ paths:
   # ===========================
   #  DATA EXPORT
   # ===========================
-  /api/export/data/:
+  /api/main/export/data/:
     get:
       tags:
         - Bulk Operations
@@ -1476,7 +1476,7 @@ paths:
   # ===========================
   #  SYSTEM
   # ===========================
-  /api/health/:
+  /api/main/health/:
     get:
       tags:
         - System
@@ -1521,7 +1521,7 @@ paths:
                   error:
                     type: string
 
-  /api/version/:
+  /api/main/version/:
     get:
       tags:
         - System
